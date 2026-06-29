@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eccv-typo-attribution"
+version = "0.1.0"
+description = "ECCV supplementary: typographic-attack attribution for CLIP via per-head SAEs, plus VLM (Gemma / InternVL / Qwen) evaluation scripts."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "torch==2.7.0",
+    "torchvision",
+    "numpy==1.26.4",
+    "open_clip_torch",
+    "openai-clip",
+    "transformers",
+    "safetensors",
+    "huggingface_hub",
+    "pytorch-lightning",
+    "einops",
+    "datasets",
+    "pyyaml",
+    "scikit-learn",
+    "pandas",
+    "tqdm",
+    "pillow",
+    "matplotlib==3.7.0",
+    "seaborn",
+]
+
+[project.optional-dependencies]
+# Only needed by models/dinov2_vit.py (lazy import of dinov2.layers.block)
+dinov2 = ["dinov2"]
+
+[tool.setuptools]
+# Flat-layout: local packages + top-level entry-point scripts live at the project root.
+py-modules = [
+    "eval_utils",
+    "clip_eval", "clip_common",
+    "vlm_eval", "vlm_common", "vlm_models",
+    "vlm_results_table", "internvl_fuse_moe",
+]
+
+[tool.setuptools.packages.find]
+include = ["proj_utils*", "dataset_utils*", "model_training*", "models*", "experiments*"]
+
+[tool.setuptools.package-data]
+dataset_utils = ["imagenet21k_labels.txt"]

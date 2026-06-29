@@ -1,0 +1,32 @@
+# Core
+torch==2.7.0
+torchvision
+numpy==1.26.4
+
+# Vision-language models / CLIP
+open_clip_torch
+openai-clip
+transformers
+safetensors
+huggingface_hub
+
+# Training / lightning
+pytorch-lightning
+einops
+
+# Data
+datasets
+pyyaml
+
+# Science / utils
+scikit-learn
+pandas
+tqdm
+pillow
+
+# Plotting (notebook / analysis)
+matplotlib==3.7.0
+seaborn
+
+# Optional: only needed by models/dinov2_vit.py (lazy `from dinov2.layers.block import Block`)
+# dinov2  # install from https://github.com/facebookresearch/dinov2 if you use DINOv2 backbones
