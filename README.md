@@ -79,6 +79,10 @@ python vlm_eval.py --model {gemma,ivl,qwen} --mode {base,prompt,zsweep,prompt_zs
 `--gpu 2,3` sets `CUDA_VISIBLE_DEVICES` before torch initialises (so it composes
 with `device_map="auto"`).
 
+### Data
+
+ImageNet-100-Text is available at: [Huggingface](https://huggingface.co/datasets/Liu524/ImageNet-100-Text)
+
 ## Runtime notes
 
 - **Working directory.** Run from this `eccv/` directory: `dataset_utils/imagenet.py`
