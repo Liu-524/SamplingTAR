@@ -1,5 +1,7 @@
 # ECCV Supplementary — Typographic-Attack Attribution for CLIP & VLMs
 
+**Project page:** https://liu-524.github.io/SamplingTAR/
+
 Code release for typographic-attack circuit attribution: we mine
 the attention heads responsible for reading text in an image (via per-head concept
 attribution) and ablate them to recover the true object. Two evaluation

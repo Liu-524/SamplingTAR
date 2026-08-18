@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training-free Concept Localization</title>
+<meta name="description" content="ECCV 2026 — Towards Robustness against Typographic Attack with Training-free Concept Localization">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700;800&family=Noto+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Roboto+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #FFFFFF;
+    --surface: #FAFBFC;
+    --surface-2: #F0F2F5;
+    --ink: #15181D;
+    --muted: #5B6472;
+    --line: #E2E6EB;
+    --attack: #C13527;
+    --attack-soft: #FBEAE7;
+    --gain: #1E874F;
+    --gain-soft: #E7F4EC;
+    --accent: #2762D9;
+    --accent-soft: #E9F0FC;
+    --link: #2762D9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1116;
+      --surface: #151A21;
+      --surface-2: #1C232C;
+      --ink: #E8EBEF;
+      --muted: #99A3B1;
+      --line: #2A313C;
+      --attack: #E4685A;
+      --attack-soft: #3A211E;
+      --gain: #55C287;
+      --gain-soft: #1B2E23;
+      --accent: #6D9BFF;
+      --accent-soft: #1D2940;
+      --link: #6D9BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1116;
+    --surface: #151A21;
+    --surface-2: #1C232C;
+    --ink: #E8EBEF;
+    --muted: #99A3B1;
+    --line: #2A313C;
+    --attack: #E4685A;
+    --attack-soft: #3A211E;
+    --gain: #55C287;
+    --gain-soft: #1B2E23;
+    --accent: #6D9BFF;
+    --accent-soft: #1D2940;
+    --link: #6D9BFF;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  h1, h2, h3 { font-family: "Figtree", system-ui, sans-serif; letter-spacing: -0.01em; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 1.25rem; }
+  .narrow { max-width: 760px; margin-left: auto; margin-right: auto; }
+
+  a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- hero ---------- */
+  header { padding: 4.5rem 0 3rem; text-align: center; border-bottom: 1px solid var(--line); }
+  .venue {
+    display: inline-block;
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.8rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    margin-bottom: 1.75rem;
+    background: var(--surface);
+  }
+  h1 {
+    font-size: clamp(1.85rem, 4.2vw, 2.9rem);
+    font-weight: 700;
+    line-height: 1.22;
+    text-wrap: balance;
+    max-width: 21ch;
+    margin: 0 auto 1.5rem;
+  }
+  .attack-tag {
+    display: inline-block;
+    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-weight: 600;
+    font-size: 0.82em;
+    color: var(--attack);
+    background: var(--surface);
+    border: 1px solid var(--attack);
+    border-radius: 3px;
+    padding: 0.02em 0.28em;
+    transform: rotate(-1.2deg);
+    box-shadow: 2px 2px 0 var(--attack-soft);
+    white-space: nowrap;
+  }
+  .authors {
+    font-size: 1.05rem;
+    max-width: 46ch;
+    margin: 0 auto 0.4rem;
+  }
+  .authors a { color: var(--ink); text-decoration: none; }
+  .authors a:hover { color: var(--link); text-decoration: underline; }
+  .affil {
+    font-family: "Figtree", system-ui, sans-serif;
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  .links { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-bottom: 2.5rem; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.45rem;
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.9rem; font-weight: 500;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.5rem 1.1rem;
+    text-decoration: none;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .btn.primary:hover { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .btn svg { width: 0.95em; height: 0.95em; fill: currentColor; }
+
+  .stats {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 0; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface);
+    max-width: 880px; margin: 0 auto;
+    overflow: hidden;
+  }
+  .stat { flex: 1 1 200px; padding: 1.1rem 1.4rem; border-left: 1px solid var(--line); }
+  .stat:first-child { border-left: none; }
+  .stat b {
+    display: block;
+    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-size: 1.45rem; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 0.15rem;
+  }
+  .stat b.gain { color: var(--gain); }
+  .stat b.attack-c { color: var(--attack); }
+  .stat span {
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.8rem; color: var(--muted); line-height: 1.4; display: block;
+  }
+  @media (max-width: 720px) {
+    .stat { flex-basis: 50%; border-top: 1px solid var(--line); }
+    .stat:nth-child(-n+2) { border-top: none; }
+    .stat:nth-child(odd) { border-left: none; }
+  }
+
+  /* ---------- animated pipeline ---------- */
+  .pl { margin: 2.25rem 0 1rem; }
+  .pl-frame {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 1rem 1rem 0.5rem;
+  }
+  .pl svg { display: block; width: 100%; height: auto; }
+  .pl svg text { font-family: "Figtree", system-ui, sans-serif; }
+  .pl svg .mono { font-family: "Roboto Mono", ui-monospace, monospace; }
+
+  /* base element styles */
+  .pl .boxline { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  .pl .lbl   { fill: var(--muted); font-size: 12.5px; }
+  .pl .lbl-s { fill: var(--muted); font-size: 11px; }
+  .pl .txt   { fill: var(--ink); font-size: 14px; }
+  .pl .edge, .pl .flow { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .pl .flow { stroke-dasharray: 6 6; animation: pl-march 1.2s linear infinite; }
+  @keyframes pl-march { to { stroke-dashoffset: -12; } }
+
+  /* stage-gated elements: hidden by default, revealed per stage */
+  .pl .grid, .pl .heat, .pl .dot, .pl .ring, .pl .dotlbl,
+  .pl .ntas, .pl .strike, .pl .verdict-good { opacity: 0; }
+  .pl .grid, .pl .heat, .pl .dot, .pl .ntas, .pl .strike,
+  .pl .attn, .pl .edge, .pl .verdict-bad, .pl .verdict-good,
+  .pl .bar-goose, .pl .bar-cat, .pl .dotlbl {
+    transition: opacity 0.55s ease, transform 0.8s cubic-bezier(.2,.7,.2,1), fill 0.55s ease;
+  }
+
+  /* stage 2+: patch grid */
+  .pl[data-stage="2"] .grid, .pl[data-stage="3"] .grid, .pl[data-stage="4"] .grid { opacity: 0.18; }
+  /* stage 2: lottery dots */
+  .pl .dot { transform: scale(0); transform-box: fill-box; transform-origin: center; }
+  .pl[data-stage="2"] .dot { opacity: 0.85; transform: scale(1); }
+  .pl[data-stage="2"] .dot:nth-of-type(odd) { transition-delay: 0.15s; }
+  .pl[data-stage="2"] .dot.hit-lex, .pl[data-stage="2"] .dot.hit-sem { transition-delay: 0.5s; opacity: 1; }
+  .pl[data-stage="2"] .dotlbl { opacity: 1; transition-delay: 0.7s; }
+  .pl[data-stage="2"] .ring { opacity: 1; animation: pl-ring 1.6s ease-out infinite 0.7s; }
+  @keyframes pl-ring {
+    0% { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(2.1); opacity: 0; }
+  }
+  .pl .ring { transform-box: fill-box; transform-origin: center; }
+  /* stage 3: attribution heat + nTAS bars */
+  .pl[data-stage="3"] .heat { opacity: 0.4; }
+  .pl .ntas { transform: scaleX(0); transform-box: fill-box; transform-origin: left center; }
+  .pl[data-stage="3"] .ntas, .pl[data-stage="4"] .ntas { opacity: 1; }
+  .pl[data-stage="3"] .ntas.n1, .pl[data-stage="4"] .ntas.n1 { transform: scaleX(0.22); }
+  .pl[data-stage="3"] .ntas.n2, .pl[data-stage="4"] .ntas.n2 { transform: scaleX(0.30); }
+  .pl[data-stage="3"] .ntas.n3, .pl[data-stage="4"] .ntas.n3 { transform: scaleX(0.92); }
+  .pl[data-stage="3"] .ntas.n4, .pl[data-stage="4"] .ntas.n4 { transform: scaleX(0.78); }
+  .pl[data-stage="3"] .ntrack, .pl[data-stage="4"] .ntrack { opacity: 1; }
+  .pl .ntrack { opacity: 0; transition: opacity 0.55s ease; }
+  .pl[data-stage="3"] .attn.lex rect, .pl[data-stage="4"] .attn.lex rect { stroke: var(--attack); }
+  .pl[data-stage="3"] .attn.lex text, .pl[data-stage="4"] .attn.lex text { fill: var(--attack); }
+  /* stage 4: intervention */
+  .pl[data-stage="4"] .strike { opacity: 1; }
+  .pl[data-stage="4"] .attn.lex { opacity: 0.5; }
+  .pl[data-stage="4"] .edge.lexedge { opacity: 0.15; }
+  .pl[data-stage="4"] .heat { opacity: 0; }
+  /* prediction bars */
+  .pl .bar-goose { fill: var(--attack); transform: scaleX(0.85); transform-box: fill-box; transform-origin: left center; }
+  .pl .bar-cat   { fill: var(--muted);  transform: scaleX(0.23); transform-box: fill-box; transform-origin: left center; }
+  .pl[data-stage="4"] .bar-goose { transform: scaleX(0.12); }
+  .pl[data-stage="4"] .bar-cat   { transform: scaleX(0.91); fill: var(--gain); }
+  .pl .verdict-bad  { opacity: 1; fill: var(--attack); font-size: 15px; font-weight: 600; }
+  .pl .verdict-good { fill: var(--gain); font-size: 15px; font-weight: 600; }
+  .pl[data-stage="4"] .verdict-bad  { opacity: 0; }
+  .pl[data-stage="4"] .verdict-good { opacity: 1; }
+  /* the pasted attack tag stamps in on load */
+  .pl .tag { animation: pl-stamp 0.6s cubic-bezier(.2,.7,.3,1.3) 0.5s backwards; }
+  @keyframes pl-stamp {
+    from { opacity: 0; transform: translateY(-16px) scale(1.25); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* caption + controls */
+  .pl-caps { position: relative; min-height: 4.6em; margin-top: 1rem; }
+  .pl-cap {
+    position: absolute; inset: 0;
+    opacity: 0; transition: opacity 0.45s ease;
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.92rem; color: var(--muted); line-height: 1.55;
+    max-width: 80ch; margin: 0;
+    pointer-events: none;
+  }
+  .pl-cap b { color: var(--ink); }
+  .pl[data-stage="1"] .pl-cap[data-cap="1"], .pl[data-stage="2"] .pl-cap[data-cap="2"],
+  .pl[data-stage="3"] .pl-cap[data-cap="3"], .pl[data-stage="4"] .pl-cap[data-cap="4"] { opacity: 1; pointer-events: auto; }
+  .pl-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+  .pl-step {
+    position: relative; overflow: hidden;
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.85rem; font-weight: 500;
+    color: var(--muted);
+    background: none; border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.4rem 1rem; cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease;
+  }
+  .pl-prog {
+    position: absolute; left: 0; bottom: 0;
+    width: 100%; height: 3px;
+    background: var(--accent);
+    transform: scaleX(0); transform-origin: left center;
+    pointer-events: none;
+  }
+  .pl[data-auto="1"] .pl-step[aria-current="step"] .pl-prog {
+    animation: pl-progress var(--pl-dur, 4.6s) linear forwards;
+  }
+  @keyframes pl-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  .pl-step b { font-family: "Roboto Mono", ui-monospace, monospace; font-weight: 600; margin-right: 0.3rem; }
+  .pl-step:hover { color: var(--ink); border-color: var(--accent); }
+  .pl-step[aria-current="step"] { color: var(--ink); border-color: var(--accent); background: var(--accent-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pl * { transition: none !important; animation: none !important; }
+    .pl .tag { opacity: 1; }
+  }
+
+  /* ---------- sections ---------- */
+  main { padding-bottom: 4rem; }
+  section { padding: 3rem 0 0.5rem; }
+  h2 {
+    font-size: 1.55rem; font-weight: 600;
+    margin-bottom: 1.1rem;
+    text-wrap: balance;
+  }
+  .eyebrow {
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.75rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  p { margin-bottom: 1rem; max-width: 72ch; }
+  .narrow p { margin-left: auto; margin-right: auto; }
+
+  figure { margin: 1.75rem 0 2.25rem; }
+  figure img {
+    display: block; width: 100%; max-width: 100%; height: auto;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: #fff;
+  }
+  figcaption {
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.85rem; color: var(--muted);
+    line-height: 1.55;
+    margin-top: 0.7rem;
+    max-width: 80ch;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  /* method cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1.5rem 0 1rem; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.4rem 1.4rem 1.2rem;
+  }
+  .card h3 { font-size: 1.08rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .card p { font-size: 0.95rem; color: var(--muted); margin-bottom: 0; max-width: none; }
+  .card .k {
+    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-size: 0.75rem; font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    display: block; margin-bottom: 0.6rem;
+  }
+
+  /* tables */
+  .tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin: 1.5rem 0 0.75rem; }
+  table {
+    border-collapse: collapse; width: 100%;
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+    min-width: 640px;
+  }
+  th, td { padding: 0.55rem 0.9rem; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+  tbody tr + tr td { border-top: 1px solid var(--line); }
+  td.gain { color: var(--gain); font-weight: 600; }
+  td.drop { color: var(--attack); font-weight: 600; }
+  tr.ours td { background: var(--gain-soft); font-weight: 600; }
+  .tnote {
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.82rem; color: var(--muted); margin-bottom: 2rem; max-width: 80ch;
+  }
+
+  /* bibtex */
+  pre.bibtex {
+    font-family: "Roboto Mono", ui-monospace, monospace;
+    font-size: 0.82rem; line-height: 1.55;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.25rem 1.4rem;
+    overflow-x: auto;
+    margin: 1.25rem 0 0.5rem;
+  }
+  .copybtn {
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.8rem; font-weight: 500;
+    color: var(--muted);
+    background: none; border: 1px solid var(--line); border-radius: 999px;
+    padding: 0.3rem 0.9rem; cursor: pointer;
+  }
+  .copybtn:hover { color: var(--ink); border-color: var(--accent); }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 2rem 0 3rem;
+    font-family: "Figtree", system-ui, sans-serif;
+    font-size: 0.82rem; color: var(--muted);
+  }
+  footer p { max-width: 90ch; margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <div class="venue">ECCV 2026 · Malmö</div>
+  <h1>Towards Robustness against <span class="attack-tag">Typographic&nbsp;Attack</span> with Training&#8209;free Concept Localization</h1>
+  <p class="authors">
+    <a href="#">Bohan Liu</a> · <a href="#">Wenqian Ye</a> · <a href="#">Guangzhi Xiong</a> ·
+    <a href="#">Zhenghao He</a> · <a href="#">Sanchit Sinha</a> · <a href="#">Aidong Zhang</a>
+  </p>
+  <p class="affil">University of Virginia</p>
+
+  <nav class="links" aria-label="Paper resources">
+    <a class="btn primary" href="static/paper.pdf">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1h6l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm5 1v4h4"/></svg>
+      Paper
+    </a>
+    <!-- TODO: fill in arXiv + poster URLs -->
+    <a class="btn" href="#">arXiv</a>
+    <a class="btn" href="https://github.com/Liu-524/SamplingTAR">Code</a>
+    <a class="btn" href="#">Poster</a>
+    <a class="btn" href="#bibtex">BibTeX</a>
+  </nav>
+
+  <div class="stats" role="list">
+    <div class="stat" role="listitem"><b class="gain">+22.8</b><span>points object accuracy on ViT&#8209;H/14, RTA&#8209;100 — no training</span></div>
+    <div class="stat" role="listitem"><b class="gain">71.7%</b><span>avg. accuracy under attack across 5 ViTs, beating supervised &amp; training-free defenses</span></div>
+    <div class="stat" role="listitem"><b>&lt;1 min</b><span>one-time circuit mining on a single A100, all five backbones</span></div>
+    <div class="stat" role="listitem"><b class="attack-c">~0</b><span>test-time overhead — the intervention edits a fixed set of attention heads</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="tldr">
+    <div class="pl" id="pipeline" data-stage="1">
+      <div class="pl-frame">
+        <svg viewBox="0 0 1000 400" role="img" aria-label="Animated pipeline: a typographic attack flips CLIP's prediction from cat to goose; random directions sampled inside each attention head reveal lexical concepts; attribution flags the text-reading heads; reweighting them restores the cat prediction.">
+          <defs>
+            <marker id="plarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" opacity="0.7"/>
+            </marker>
+          </defs>
+
+          <!-- input image -->
+          <rect x="40" y="80" width="180" height="180" rx="10" fill="#F3EEE4" stroke="#C9BEA9" stroke-width="1.5"/>
+          <text x="130" y="198" text-anchor="middle" font-size="92">&#x1F431;</text>
+          <g class="grid" stroke="var(--ink)" stroke-width="1">
+            <line x1="85"  y1="80" x2="85"  y2="260"/><line x1="130" y1="80" x2="130" y2="260"/><line x1="175" y1="80" x2="175" y2="260"/>
+            <line x1="40" y1="125" x2="220" y2="125"/><line x1="40" y1="170" x2="220" y2="170"/><line x1="40" y1="215" x2="220" y2="215"/>
+          </g>
+          <rect class="heat" x="86"  y="216" width="43" height="43" fill="var(--attack)"/>
+          <rect class="heat" x="131" y="216" width="43" height="43" fill="var(--attack)"/>
+          <g class="tag" transform="rotate(-3 122 219)">
+            <rect x="70" y="205" width="104" height="28" rx="4" fill="#FFFFFF" stroke="#C13527" stroke-width="2"/>
+            <text class="mono" x="122" y="225" text-anchor="middle" font-size="16" font-weight="600" fill="#C13527">GOOSE</text>
+          </g>
+          <text class="lbl" x="130" y="284" text-anchor="middle">input image + injected text</text>
+
+          <!-- flow into encoder -->
+          <line class="flow" x1="228" y1="170" x2="288" y2="170" marker-end="url(#plarrow)" style="color: var(--muted)"/>
+
+          <!-- encoder -->
+          <rect class="boxline" x="300" y="60" width="330" height="280" rx="12"/>
+          <text class="lbl" x="465" y="86" text-anchor="middle">CLIP ViT &#8212; attention heads, layer &#8467;</text>
+
+          <!-- head rows -->
+          <g class="attn vis"><rect x="318" y="104" width="64" height="32" rx="6" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/><text class="txt" x="350" y="125" text-anchor="middle">Attn&#8321;</text></g>
+          <g class="attn vis"><rect x="318" y="159" width="64" height="32" rx="6" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/><text class="txt" x="350" y="180" text-anchor="middle">Attn&#8322;</text></g>
+          <g class="attn lex"><rect x="318" y="214" width="64" height="32" rx="6" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/><text class="txt" x="350" y="235" text-anchor="middle">Attn&#8323;</text></g>
+          <g class="attn lex"><rect x="318" y="269" width="64" height="32" rx="6" fill="var(--surface-2)" stroke="var(--line)" stroke-width="1.5"/><text class="txt" x="350" y="290" text-anchor="middle">Attn&#8324;</text></g>
+
+          <!-- stage 2: sampled directions per head subspace -->
+          <g fill="var(--muted)">
+            <circle class="dot" cx="412" cy="114" r="4"/><circle class="dot" cx="432" cy="127" r="4"/><circle class="dot" cx="478" cy="111" r="4"/><circle class="dot" cx="500" cy="125" r="4"/><circle class="dot" cx="523" cy="116" r="4"/><circle class="dot" cx="548" cy="124" r="4"/><circle class="dot" cx="566" cy="113" r="4"/>
+            <circle class="dot" cx="408" cy="170" r="4"/><circle class="dot" cx="430" cy="181" r="4"/><circle class="dot" cx="452" cy="168" r="4"/><circle class="dot" cx="476" cy="178" r="4"/><circle class="dot" cx="499" cy="171" r="4"/><circle class="dot" cx="525" cy="180" r="4"/><circle class="dot" cx="551" cy="169" r="4"/><circle class="dot" cx="570" cy="178" r="4"/>
+            <circle class="dot" cx="410" cy="236" r="4"/><circle class="dot" cx="431" cy="222" r="4"/><circle class="dot" cx="455" cy="234" r="4"/><circle class="dot" cx="478" cy="226" r="4"/><circle class="dot" cx="526" cy="238" r="4"/><circle class="dot" cx="549" cy="225" r="4"/><circle class="dot" cx="568" cy="235" r="4"/>
+            <circle class="dot" cx="414" cy="280" r="4"/><circle class="dot" cx="435" cy="290" r="4"/><circle class="dot" cx="458" cy="282" r="4"/><circle class="dot" cx="480" cy="289" r="4"/><circle class="dot" cx="504" cy="279" r="4"/><circle class="dot" cx="528" cy="288" r="4"/><circle class="dot" cx="552" cy="280" r="4"/><circle class="dot" cx="569" cy="289" r="4"/>
+          </g>
+          <circle class="dot hit-sem" cx="455" cy="120" r="5.5" fill="var(--gain)"/>
+          <text class="dotlbl lbl-s" x="468" y="106" fill="var(--gain)" font-weight="600">semantic concept</text>
+          <circle class="ring" cx="500" cy="230" r="8" fill="none" stroke="var(--attack)" stroke-width="2"/>
+          <circle class="dot hit-lex" cx="500" cy="230" r="6.5" fill="var(--attack)"/>
+          <text class="dotlbl lbl-s" x="512" y="214" fill="var(--attack)" font-weight="600">lottery hit: lexical!</text>
+
+          <!-- stage 3: nTAS bars -->
+          <g>
+            <rect class="ntrack" x="400" y="115" width="180" height="10" rx="5" fill="var(--surface-2)" stroke="var(--line)"/>
+            <rect class="ntrack" x="400" y="170" width="180" height="10" rx="5" fill="var(--surface-2)" stroke="var(--line)"/>
+            <rect class="ntrack" x="400" y="225" width="180" height="10" rx="5" fill="var(--surface-2)" stroke="var(--line)"/>
+            <rect class="ntrack" x="400" y="280" width="180" height="10" rx="5" fill="var(--surface-2)" stroke="var(--line)"/>
+            <rect class="ntas n1" x="400" y="115" width="180" height="10" rx="5" fill="var(--gain)"/>
+            <rect class="ntas n2" x="400" y="170" width="180" height="10" rx="5" fill="var(--gain)"/>
+            <rect class="ntas n3" x="400" y="225" width="180" height="10" rx="5" fill="var(--attack)"/>
+            <rect class="ntas n4" x="400" y="280" width="180" height="10" rx="5" fill="var(--attack)"/>
+            <text class="ntrack lbl-s" x="580" y="107" text-anchor="end">nTAS (lexical focus)</text>
+          </g>
+
+          <!-- stage 4: strike the lexical heads -->
+          <g class="strike" stroke="var(--attack)" stroke-width="2.5" stroke-linecap="round">
+            <line x1="320" y1="244" x2="380" y2="216"/>
+            <line x1="320" y1="299" x2="380" y2="271"/>
+          </g>
+
+          <!-- edges to output -->
+          <line class="edge" x1="632" y1="120" x2="694" y2="196"/>
+          <line class="edge" x1="632" y1="175" x2="694" y2="198"/>
+          <line class="edge lexedge" x1="632" y1="230" x2="694" y2="202"/>
+          <line class="edge lexedge" x1="632" y1="285" x2="694" y2="204"/>
+          <line class="edge" x1="694" y1="200" x2="702" y2="200" marker-end="url(#plarrow)" style="color: var(--muted)"/>
+
+          <!-- output -->
+          <rect class="boxline" x="706" y="110" width="254" height="180" rx="12"/>
+          <text class="lbl" x="833" y="140" text-anchor="middle">zero-shot prediction</text>
+          <text class="lbl-s" x="730" y="166">goose</text>
+          <rect x="730" y="172" width="200" height="14" rx="7" fill="var(--surface-2)" stroke="var(--line)"/>
+          <rect class="bar-goose" x="730" y="172" width="200" height="14" rx="7"/>
+          <text class="lbl-s" x="730" y="216">cat</text>
+          <rect x="730" y="222" width="200" height="14" rx="7" fill="var(--surface-2)" stroke="var(--line)"/>
+          <rect class="bar-cat" x="730" y="222" width="200" height="14" rx="7"/>
+          <text class="verdict-bad mono"  x="833" y="270" text-anchor="middle">&#10007; &#8220;goose&#8221;</text>
+          <text class="verdict-good mono" x="833" y="270" text-anchor="middle">&#10003; &#8220;cat&#8221;</text>
+        </svg>
+      </div>
+
+      <div class="pl-caps">
+        <p class="pl-cap" data-cap="1"><b>1 · The attack.</b> A word pasted onto the image hijacks the prediction: the cat is classified as <em>goose</em>. The lexical signal travels through a small set of attention heads inside the frozen CLIP encoder.</p>
+        <p class="pl-cap" data-cap="2"><b>2 · Decompose &amp; sample.</b> Each attention head is a low-dimensional subspace. We sample random directions in every head — a <b>stochastic lottery</b> in which some samples land on real concept directions, lexical or semantic. No training, no learned dictionary.</p>
+        <p class="pl-cap" data-cap="3"><b>3 · Attribute.</b> Gradient-based attribution against the text region scores every head's lexical focus (<b>nTAS</b>); attribution heat concentrates on the injected word. A z-test flags the heads that read text instead of looking at the object.</p>
+        <p class="pl-cap" data-cap="4"><b>4 · Intervene.</b> Reweighting attention away from text patches — or zero-ablating the flagged heads in LVLMs — suppresses the lexical circuit. The prediction returns to <em>cat</em>, with no training and near-zero test-time cost.</p>
+      </div>
+
+      <div class="pl-controls">
+        <button class="pl-step" type="button" data-step="1" aria-current="step"><b>1</b>Attack<span class="pl-prog" aria-hidden="true"></span></button>
+        <button class="pl-step" type="button" data-step="2"><b>2</b>Decompose &amp; sample<span class="pl-prog" aria-hidden="true"></span></button>
+        <button class="pl-step" type="button" data-step="3"><b>3</b>Attribute<span class="pl-prog" aria-hidden="true"></span></button>
+        <button class="pl-step" type="button" data-step="4"><b>4</b>Intervene<span class="pl-prog" aria-hidden="true"></span></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="abstract" class="narrow">
+    <div class="eyebrow">Abstract</div>
+    <h2>Text painted on an image shouldn't decide what the model sees</h2>
+    <p>CLIP vision encoders power most modern large vision-language models, yet they share a critical failure mode: irrelevant text appearing inside an image biases the representation toward its lexical meaning — a cat labeled <em>“GOOSE”</em> becomes a goose. This <em>typographic attack</em> poses real risk to safety-critical systems such as autonomous driving.</p>
+    <p>We propose a training-free mechanistic interpretability method that localizes this vulnerability. Sampling-based interpretation of hidden states, combined with gradient-based attribution, quantitatively separates <em>semantic</em> from <em>lexical</em> focus at the level of individual attention heads. Probabilistic analysis and circuit mining isolate the ViT components that disproportionately encode lexical information — the mechanistic source of the attack.</p>
+    <p>Simple interventions on the identified circuits — selective attention reweighting or zero ablation, with no additional training — substantially improve robustness, outperforming both supervised and training-free defenses on object classification, and lifting VQA accuracy of state-of-the-art LVLMs (Qwen3-VL, InternVL3.5, Gemma3) under typographic interference on RIO-Bench.</p>
+  </section>
+
+  <section id="method">
+    <div class="eyebrow">Method</div>
+    <h2>Three ideas, no gradients through training</h2>
+    <div class="cards">
+      <div class="card">
+        <span class="k">01 · STOCHASTIC LOTTERY</span>
+        <h3>Sampling-based concept mining</h3>
+        <p>Under the Linear Representation Hypothesis, concepts are directions. Instead of learning a sparse dictionary, we sample random vectors — and show that the low-dimensional MHSA head subspace concentrates the lottery: interference shrinks, and a feasible number of samples reliably hits interpretable concept directions.</p>
+      </div>
+      <div class="card">
+        <span class="k">02 · nTAS ATTRIBUTION</span>
+        <h3>Ranking heads by lexical focus</h3>
+        <p>A gradient-based, normalized Text Attribution Score jointly measures each head's attention focus and concept direction against text-region masks. A simple z-test over heads in a layer extracts the lexical circuit — from 1,280 unlabeled images, in under a minute per model.</p>
+      </div>
+      <div class="card">
+        <span class="k">03 · INTERVENTION</span>
+        <h3>Reweight or ablate the circuit</h3>
+        <p>For CLIP classification, attention reweighting redirects the <code>&lt;cls&gt;</code> token away from text patches in the vulnerable heads. For LVLMs without a class token, zero ablation removes the lexical distraction. Both are test-time edits on a fixed set of head indices — effectively free.</p>
+      </div>
+    </div>
+    <figure>
+      <img src="static/fig1_overview.png" alt="Method overview: (a) sampling latent vectors in a hypothetical linear concept space and evaluating concept semantics with gradient-based attribution, (b) ranking attention heads by text attribution, (c) mechanistic intervention via attention reweighting or zero ablation.">
+      <figcaption><b>Full schematic (paper Fig. 1).</b> (a) The stochastic lottery for lexical circuit mining: latent samples on the hypothesized concept basis reveal distinct attribution patterns. (b) Sampling and circuit mining via gradient-based attribution. (c) Mechanistic intervention: attention reweighting for classification, zero ablation for VQA.</figcaption>
+    </figure>
+  </section>
+
+  <section id="results-clip">
+    <div class="eyebrow">Results · CLIP</div>
+    <h2>Robustness across five ViT backbones</h2>
+    <p>Zero-shot object classification under typographic attack, before and after intervention. OCA: object classification accuracy (higher is better). TCR: text confusion rate — how often the model predicts the injected text label (lower is better).</p>
+    <div class="tablebox">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th colspan="2">RTA-100</th>
+            <th colspan="2">Disentangling</th>
+            <th colspan="2">PAINT</th>
+            <th colspan="2">IN-100-Text</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>OCA ↑</th><th>TCR ↓</th>
+            <th>OCA ↑</th><th>TCR ↓</th>
+            <th>OCA ↑</th><th>TCR ↓</th>
+            <th>OCA ↑</th><th>TCR ↓</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>ViT-B/16</td><td>56.3</td><td>30.8</td><td>52.2</td><td>44.4</td><td>60.2</td><td>33.0</td><td>54.6</td><td>33.0</td></tr>
+          <tr><td>&nbsp;&nbsp;+ intervention</td><td class="gain">68.7</td><td class="drop">12.6</td><td class="gain">88.3</td><td class="drop">11.7</td><td class="gain">73.8</td><td class="drop">16.5</td><td class="gain">74.2</td><td class="drop">7.1</td></tr>
+          <tr><td>ViT-L/14</td><td>54.6</td><td>39.0</td><td>51.7</td><td>47.8</td><td>61.2</td><td>33.0</td><td>58.2</td><td>32.9</td></tr>
+          <tr><td>&nbsp;&nbsp;+ intervention</td><td class="gain">68.9</td><td class="drop">21.2</td><td class="gain">68.3</td><td class="drop">31.1</td><td class="gain">68.9</td><td class="drop">22.3</td><td class="gain">74.9</td><td class="drop">12.1</td></tr>
+          <tr><td>ViT-H/14</td><td>53.4</td><td>42.0</td><td>46.1</td><td>53.3</td><td>49.5</td><td>46.6</td><td>56.6</td><td>36.9</td></tr>
+          <tr><td>&nbsp;&nbsp;+ intervention</td><td class="gain">76.2</td><td class="drop">14.4</td><td class="gain">82.2</td><td class="drop">17.2</td><td class="gain">75.7</td><td class="drop">14.6</td><td class="gain">79.1</td><td class="drop">9.5</td></tr>
+          <tr><td>ViT-G/14</td><td>50.3</td><td>45.8</td><td>58.3</td><td>41.1</td><td>53.4</td><td>39.8</td><td>57.0</td><td>36.4</td></tr>
+          <tr><td>&nbsp;&nbsp;+ intervention</td><td class="gain">68.8</td><td class="drop">23.4</td><td class="gain">81.7</td><td class="drop">17.8</td><td class="gain">75.7</td><td class="drop">18.4</td><td class="gain">76.4</td><td class="drop">12.7</td></tr>
+          <tr><td>ViT-bigG/14</td><td>61.0</td><td>32.5</td><td>48.3</td><td>51.1</td><td>49.5</td><td>38.8</td><td>62.3</td><td>31.0</td></tr>
+          <tr><td>&nbsp;&nbsp;+ intervention</td><td class="gain">75.7</td><td class="drop">15.3</td><td class="gain">72.8</td><td class="drop">26.7</td><td class="gain">79.6</td><td class="drop">10.7</td><td class="gain">80.6</td><td class="drop">8.9</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tnote">All models pretrained on LAION-2B. Clean-accuracy trade-off is under 1% (see paper appendix). IN-100-Text is our new benchmark: ImageNet-100 with realistic, contextually coherent text distractors rendered by Qwen-Image-Edit.</p>
+
+    <h2>Against prior defenses</h2>
+    <p>Average object classification accuracy over the five backbones, using the same 0.1% of ImageNet-1K training images as the training-free baseline.</p>
+    <div class="tablebox">
+      <table>
+        <thead>
+          <tr><th>Method</th><th>RTA-100</th><th>Disentangling</th><th>PAINT</th><th>IN-100-Text</th><th>IN-100 (clean)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Defense-Prefix (supervised)</td><td>63.6</td><td>67.8</td><td>67.8</td><td>70.1</td><td>81.4</td></tr>
+          <tr><td>Dyslexify (training-free)</td><td>67.0</td><td>67.6</td><td>70.1</td><td>72.8</td><td>81.3</td></tr>
+          <tr><td>Dyslexify (full IN-100 train set)</td><td>68.5</td><td>70.7</td><td>72.2</td><td>–</td><td>81.0</td></tr>
+          <tr class="ours"><td>Ours (nTAS)</td><td>71.7</td><td>78.7</td><td>74.7</td><td>77.0</td><td>81.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tnote">Averages over ViT-B/16, L/14, H/14, G/14 and bigG/14 — an average gain of +6.1 OCA over greedy search on noisy attention maps, at a fraction of the labeled data.</p>
+  </section>
+
+  <section id="results-lvlm">
+    <div class="eyebrow">Results · LVLMs</div>
+    <h2>The same circuits generalize to vision-language models</h2>
+    <p>Applying the mining pipeline to the vision towers of Qwen3-VL, InternVL3.5 and Gemma3 (attribution on the first visual token, zero ablation of lexical heads) improves VQA accuracy on RIO-Bench's attacked multiple-choice split — with a −0.3% to +0.6% effect on clean-image VQA.</p>
+    <div class="tablebox">
+      <table>
+        <thead>
+          <tr><th>Model</th><th>Base</th><th>Ours</th><th>Δ overall</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Qwen3-VL-4B</td><td>62.95</td><td>63.92</td><td class="gain">+0.97</td></tr>
+          <tr><td>Qwen3-VL-8B</td><td>70.11</td><td>71.69</td><td class="gain">+1.58</td></tr>
+          <tr><td>Qwen3-VL-30B-A3B</td><td>64.98</td><td>66.11</td><td class="gain">+1.13</td></tr>
+          <tr><td>InternVL3.5-8B</td><td>58.24</td><td>58.47</td><td class="gain">+0.23</td></tr>
+          <tr><td>InternVL3.5-14B</td><td>53.07</td><td>53.08</td><td class="gain">+0.01</td></tr>
+          <tr><td>Gemma3-4B</td><td>44.35</td><td>46.07</td><td class="gain">+1.73</td></tr>
+          <tr><td>Gemma3-12B</td><td>48.24</td><td>49.78</td><td class="gain">+1.53</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="tnote">Overall VQA accuracy (%) on RIO-Bench obj-attack, averaged over easy / medium / hard subsets.</p>
+  </section>
+
+  <section id="qualitative">
+    <div class="eyebrow">Qualitative</div>
+    <h2>High-nTAS samples really do read text</h2>
+    <figure>
+      <img src="static/fig2_concept_localization.png" alt="Grids of attribution maps: high-nTAS concept samples highlight rendered text regions in images (left), while low-nTAS samples highlight object regions such as mushrooms, dogs, birds and animals (right).">
+      <figcaption><b>Concept localization.</b> Attribution maps of sampled random concept vectors on their activating images. High-nTAS samples (left) concentrate on rendered text — signs, labels, book spines — while low-nTAS samples (right) attend to visual semantics: mushrooms, dogs, shorebirds, fur. The score separates lexical from visual heads without any labels.</figcaption>
+    </figure>
+    <figure>
+      <img src="static/fig3_aligned_unaligned.png" alt="Attribution maps for an unaligned concept vector (noisy, uninterpretable) versus an aligned vector with nTAS 0.898 (sharply concentrated on lexical shapes).">
+      <figcaption><b>Aligned vs. unaligned directions.</b> An arbitrary vector (left) produces diffuse, uninterpretable score mass; an aligned lottery hit (right, nTAS = 0.898) concentrates sharply on the lexical shapes — evidence the score reflects genuine concept directions rather than attribution noise.</figcaption>
+    </figure>
+    <figure>
+      <img src="static/fig4_samples.png" alt="Box plots of module-score standard deviation across random seeds, decreasing as the expansion ratio (samples per dimension) grows from 4 to 64, for five ViT sizes.">
+      <figcaption><b>Stability.</b> Module-score variance across random seeds shrinks as the number of samples grows; the method stabilizes at 8 samples per dimension across all five ViT sizes, and downstream accuracy is seed-stable (±0.0–0.6 across 4 seeds).</figcaption>
+    </figure>
+  </section>
+
+  <section id="bibtex" class="narrow">
+    <div class="eyebrow">Citation</div>
+    <h2>BibTeX</h2>
+<pre class="bibtex" id="bibtex-text">@inproceedings{liu2026typographic,
+  title     = {Towards Robustness against Typographic Attack
+               with Training-free Concept Localization},
+  author    = {Liu, Bohan and Ye, Wenqian and Xiong, Guangzhi and
+               He, Zhenghao and Sinha, Sanchit and Zhang, Aidong},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  year      = {2026}
+}</pre>
+    <button class="copybtn" id="copybib" type="button">Copy BibTeX</button>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>This work is supported in part by the US National Science Foundation under grants IIS-2538206, IIS-2529378, IIS-2500341, CCF-2217071, CNS-2213700, and OAC-2530655. Any recommendations expressed in this material are those of the authors and do not necessarily reflect the views of NSF.</p>
+    <p>Code builds on the <a href="https://github.com/maxdreyer/attributing-clip">Attributing-CLIP</a> codebase. Website © 2026 the authors.</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var pl = document.getElementById('pipeline');
+    var steps = Array.prototype.slice.call(pl.querySelectorAll('.pl-step'));
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var STAGE_MS = 4600;
+    var timer = null;
+
+    pl.style.setProperty('--pl-dur', (STAGE_MS / 1000) + 's');
+
+    function setStage(n) {
+      pl.setAttribute('data-stage', String(n));
+      steps.forEach(function (btn) {
+        if (btn.dataset.step === String(n)) {
+          btn.setAttribute('aria-current', 'step');
+          var prog = btn.querySelector('.pl-prog');
+          prog.style.animation = 'none';
+          void prog.offsetWidth;          // force reflow so the fill restarts from zero
+          prog.style.animation = '';
+        } else {
+          btn.removeAttribute('aria-current');
+        }
+      });
+    }
+    function stopAuto() { if (timer) { clearInterval(timer); timer = null; } }
+    function startAuto() {
+      if (reduced) return;
+      stopAuto();
+      pl.setAttribute('data-auto', '1');
+      timer = setInterval(function () {
+        var next = (parseInt(pl.getAttribute('data-stage'), 10) % 4) + 1;
+        setStage(next);
+      }, STAGE_MS);
+    }
+
+    steps.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setStage(parseInt(btn.dataset.step, 10));  // jump there…
+        startAuto();                               // …and keep looping from that point
+      });
+    });
+
+    // start cycling once the figure is on screen
+    if ('IntersectionObserver' in window && !reduced) {
+      var seen = false;
+      new IntersectionObserver(function (entries, obs) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting && !seen) { seen = true; setStage(1); startAuto(); obs.disconnect(); }
+        });
+      }, { threshold: 0.4 }).observe(pl);
+    } else if (!reduced) {
+      setStage(1); startAuto();
+    }
+  })();
+
+  document.getElementById('copybib').addEventListener('click', async function () {
+    var text = document.getElementById('bibtex-text').textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      this.textContent = 'Copied';
+    } catch (e) {
+      this.textContent = 'Select & copy manually';
+    }
+    var btn = this;
+    setTimeout(function () { btn.textContent = 'Copy BibTeX'; }, 2000);
+  });
+</script>
+
+</body>
+</html>
