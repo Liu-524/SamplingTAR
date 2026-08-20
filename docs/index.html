@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Training-free Concept Localization</title>
 <meta name="description" content="ECCV 2026 — Towards Robustness against Typographic Attack with Training-free Concept Localization">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700;800&family=Noto+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Roboto+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="static/fonts/fonts.css">
 <style>
   :root {
     --ground: #FFFFFF;
@@ -414,7 +412,7 @@
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1h6l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm5 1v4h4"/></svg>
       Paper
     </a>
-    <!-- TODO: fill in arXiv + poster URLs -->
+    <!-- TODO: fill in poster URL -->
     <a class="btn" href="https://arxiv.org/abs/2607.02494">arXiv</a>
     <a class="btn" href="https://github.com/Liu-524/SamplingTAR">Code</a>
     <a class="btn" href="#">Poster</a>
@@ -733,16 +731,23 @@
       });
     });
 
-    // start cycling once the figure is on screen
-    if ('IntersectionObserver' in window && !reduced) {
-      var seen = false;
-      new IntersectionObserver(function (entries, obs) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting && !seen) { seen = true; setStage(1); startAuto(); obs.disconnect(); }
-        });
-      }, { threshold: 0.4 }).observe(pl);
-    } else if (!reduced) {
-      setStage(1); startAuto();
+    // start cycling once any part of the figure is on screen —
+    // with an unconditional fallback so the loop can never fail to start
+    if (!reduced) {
+      var started = false;
+      function begin() {
+        if (started) return;
+        started = true;
+        setStage(1); startAuto();
+      }
+      if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries, obs) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { begin(); obs.disconnect(); }
+          });
+        }, { threshold: 0.1 }).observe(pl);
+      }
+      setTimeout(begin, 2500);
     }
   })();
 
