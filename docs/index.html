@@ -285,9 +285,12 @@
   .pl-step:hover { color: var(--ink); border-color: var(--accent); }
   .pl-step[aria-current="step"] { color: var(--ink); border-color: var(--accent); background: var(--accent-soft); }
 
+  /* Reduced motion: stages still cycle (driven by JS), but every change is
+     instant — no transitions, no keyframe motion, no pulsing or marching. */
   @media (prefers-reduced-motion: reduce) {
     .pl * { transition: none !important; animation: none !important; }
     .pl .tag { opacity: 1; }
+    .pl[data-auto="1"] .pl-step[aria-current="step"] .pl-prog { transform: scaleX(1); }
   }
 
   /* ---------- sections ---------- */
@@ -693,7 +696,6 @@
   (function () {
     var pl = document.getElementById('pipeline');
     var steps = Array.prototype.slice.call(pl.querySelectorAll('.pl-step'));
-    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var STAGE_MS = 4600;
     var timer = null;
 
@@ -715,7 +717,6 @@
     }
     function stopAuto() { if (timer) { clearInterval(timer); timer = null; } }
     function startAuto() {
-      if (reduced) return;
       stopAuto();
       pl.setAttribute('data-auto', '1');
       timer = setInterval(function () {
@@ -731,24 +732,25 @@
       });
     });
 
-    // start cycling once any part of the figure is on screen —
-    // with an unconditional fallback so the loop can never fail to start
-    if (!reduced) {
-      var started = false;
-      function begin() {
-        if (started) return;
-        started = true;
-        setStage(1); startAuto();
-      }
-      if ('IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries, obs) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) { begin(); obs.disconnect(); }
-          });
-        }, { threshold: 0.1 }).observe(pl);
-      }
-      setTimeout(begin, 2500);
+    // Start cycling once any part of the figure is on screen, with an
+    // unconditional fallback so the loop can never fail to start. The loop
+    // runs even under prefers-reduced-motion: the media query in the CSS
+    // strips transitions and keyframe motion, so stages swap instantly
+    // instead of animating — content still cycles, nothing glides or pulses.
+    var started = false;
+    function begin() {
+      if (started) return;
+      started = true;
+      setStage(1); startAuto();
     }
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries, obs) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { begin(); obs.disconnect(); }
+        });
+      }, { threshold: 0.1 }).observe(pl);
+    }
+    setTimeout(begin, 2500);
   })();
 
   document.getElementById('copybib').addEventListener('click', async function () {
